@@ -118,10 +118,12 @@ jobs:
           python3 ../tools/asc_screenshots.py shots/0[1-3]-*.png
 
   testflight:
-    name: Sign & upload to TestFlight
+    name: Sign & upload to TestFlight + ad hoc install page
     runs-on: macos-26
     timeout-minutes: 45
     needs: build
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -193,3 +195,52 @@ jobs:
             -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Export ad hoc IPA (registered devices only)
+        if: steps.creds.outputs.have == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath build/Remotebontrol.xcarchive \
+            -exportOptionsPlist ExportOptionsAdHoc.plist \
+            -exportPath build/adhoc \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          ls -la build/adhoc
+
+      - name: Publish install page to GitHub Pages
+        if: steps.creds.outputs.have == 'true'
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p web/ipa
+          cp ios/build/adhoc/*.ipa web/ipa/Remotebontrol.ipa
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' ios/build/Remotebontrol.xcarchive/Products/Applications/Remotebontrol.app/Info.plist)
+          cat > web/ipa/manifest.plist <<EOF2
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>items</key><array><dict>
+            <key>assets</key><array>
+              <dict><key>kind</key><string>software-package</string><key>url</key><string>https://assiamahs.github.io/remotebontrol/ipa/Remotebontrol.ipa</string></dict>
+              <dict><key>kind</key><string>display-image</string><key>url</key><string>https://assiamahs.github.io/remotebontrol/icon-180.png</string></dict>
+              <dict><key>kind</key><string>full-size-image</string><key>url</key><string>https://assiamahs.github.io/remotebontrol/icon-512.png</string></dict>
+            </array>
+            <key>metadata</key><dict>
+              <key>bundle-identifier</key><string>com.assiamah.remotebontrol</string>
+              <key>bundle-version</key><string>${VERSION}</string>
+              <key>kind</key><string>software</string>
+              <key>title</key><string>Remote</string>
+            </dict>
+          </dict></array></dict></plist>
+          EOF2
+          sed -i '' "s/BUILD_NUMBER/$GITHUB_RUN_NUMBER/; s/BUILD_DATE/$(date -u +%Y-%m-%d)/" web/install.html || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/ipa web/install.html
+          git commit -m "build: ad hoc IPA build $GITHUB_RUN_NUMBER" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
