@@ -1,5 +1,7 @@
 # Remote (remotebontrol)
 
+**Install:** open [assiamahs.github.io/remotebontrol/install.html](https://assiamahs.github.io/remotebontrol/install.html) in Safari on your iPhone.
+
 A free Samsung TV remote for iPhone. No subscription, no ads, no account, nothing leaves your Wi-Fi.
 
 Built because the "Universal TV Remote" app kept charging $2.99 a week for a WebSocket call the TV answers for free.
