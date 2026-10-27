@@ -135,7 +135,7 @@ final class SamsungRemote: NSObject, ObservableObject {
                 pending.append("KEY_POWER")
                 return
             }
-            WakeOnLAN.send(mac: stored.mac, ip: stored.ip)
+            WakeOnLAN.send(macs: stored.allMACs, ip: stored.ip)
             if socket == nil { open(stored) }
             pending.append("KEY_POWER")
             return
@@ -147,10 +147,10 @@ final class SamsungRemote: NSObject, ObservableObject {
         var sweepDone = false
         var target = stored
         while Date() < deadline, !Task.isCancelled {
-            WakeOnLAN.send(mac: target.mac, ip: target.ip)
+            WakeOnLAN.send(macs: target.allMACs, ip: target.ip)
             if let found = await TVScanner.probe(target.ip, timeout: 1.0) {
                 // Awake. The WoL already turned it on; just attach.
-                if found.powerState != "on" { WakeOnLAN.send(mac: target.mac, ip: target.ip) }
+                if found.powerState != "on" { WakeOnLAN.send(macs: target.allMACs, ip: target.ip) }
                 if target.ip != stored.ip { TVStore.shared.updateIP(target.ip, for: stored.id) }
                 tv = TVStore.shared.tvs.first { $0.id == stored.id } ?? target
                 state = .idle
@@ -255,6 +255,14 @@ extension SamsungRemote: URLSessionDelegate {
 /// subnet broadcast, on both WoL ports; the unicast path is what works without the multicast entitlement.
 /// Only lands if the TV's "Power On with Mobile" (network standby) is on — otherwise its Wi-Fi radio is asleep.
 enum WakeOnLAN {
+    /// Samsung sets drop the first few magic packets after a long sleep (people who ship
+    /// WoL for these TVs send batches of ten), so every wake call is a burst, not one packet.
+    static let burst = 10
+
+    static func send(macs: [String], ip: String) {
+        for _ in 0..<burst { for mac in macs { send(mac: mac, ip: ip) } }
+    }
+
     static func send(mac: String, ip: String) {
         let hex = mac.replacingOccurrences(of: ":", with: "").replacingOccurrences(of: "-", with: "")
         guard hex.count == 12 else { return }

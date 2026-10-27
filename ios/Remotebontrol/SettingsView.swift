@@ -22,6 +22,7 @@ struct SettingsView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(tv.displayName).font(.headline)
                                     Text("\(tv.model) · \(tv.ip)" + (tv.token.isEmpty ? " · not paired yet" : " · paired")).font(.caption).foregroundStyle(Theme.muted)
+                                    Text("wake: " + tv.allMACs.joined(separator: ", ")).font(.caption2).foregroundStyle(Theme.muted)
                                 }
                                 Spacer()
                                 if store.selectedID == tv.id { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }

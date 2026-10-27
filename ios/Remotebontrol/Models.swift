@@ -10,6 +10,20 @@ struct TV: Identifiable, Codable, Equatable {
     var mac: String
     var model: String
     var token: String
+    /// Other MACs this TV has shown up with (a Samsung has a wired and a wireless one;
+    /// the magic packet has to hit whichever interface is in standby). Optional so
+    /// entries saved by older builds still decode.
+    var extraMACs: [String]? = nil
+
+    /// Every MAC worth sending a magic packet to.
+    var allMACs: [String] {
+        var out: [String] = []
+        for m in [mac] + (extraMACs ?? []) {
+            let u = m.uppercased()
+            if !u.isEmpty, !out.contains(u) { out.append(u) }
+        }
+        return out
+    }
 
     var displayName: String {
         name.replacingOccurrences(of: "[TV] ", with: "")
@@ -46,6 +60,7 @@ final class TVStore: ObservableObject {
         if let i = tvs.firstIndex(where: { $0.id == tv.id }) {
             var merged = tv
             if merged.token.isEmpty { merged.token = tvs[i].token }
+            merged.extraMACs = (tvs[i].allMACs + (tv.extraMACs ?? [])).filter { $0 != merged.mac.uppercased() }
             tvs[i] = merged
         } else {
             tvs.append(tv)
