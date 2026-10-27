@@ -50,7 +50,8 @@ final class SamsungRemote: NSObject, ObservableObject {
         Task {
             // Cheap plain-HTTP knock first: a TV that is off (or moved IP) fails here in ~1s
             // instead of hanging the WebSocket handshake.
-            guard let live = await locate(tv) else {
+            // DHCP hands the TV a new address after it's been off a while; sweep for its MAC.
+            guard let live = await locate(tv, sweep: true) else {
                 if state == .connecting || state == .waitingForAllow { state = .unreachable }
                 return
             }
@@ -179,6 +180,7 @@ final class SamsungRemote: NSObject, ObservableObject {
         }
         if let hit {
             TVStore.shared.updateIP(hit.ip, for: tv.id)
+            if self.tv?.id == tv.id { self.tv?.ip = hit.ip }
             return merged(hit, with: tv)
         }
         return nil
