@@ -58,6 +58,12 @@ final class TVStore: ObservableObject {
         tvs[i].token = token
     }
 
+    /// DHCP moved the TV; remember where it is now.
+    func updateIP(_ ip: String, for id: String) {
+        guard let i = tvs.firstIndex(where: { $0.id == id }), tvs[i].ip != ip else { return }
+        tvs[i].ip = ip
+    }
+
     func remove(_ tv: TV) {
         tvs.removeAll { $0.id == tv.id }
         if selectedID == tv.id { selectedID = tvs.first?.id }

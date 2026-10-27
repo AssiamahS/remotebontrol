@@ -65,6 +65,10 @@ struct SettingsView: View {
                     }
                     if let manualError { Text(manualError).font(.caption).foregroundStyle(Theme.power) }
                 }
+                Section("Turning the TV on from here") {
+                    Text("A TV that is fully off only wakes over Wi-Fi if its network standby is on. One-time setup, with any remote or the TV's own button:\n\nSettings › General › Network › Expert Settings › Power On with Mobile › On\n(2022+ models: Settings › All Settings › Connection › Network › Expert Settings.)\n\nAfter that the power button here sends a wake packet and the TV comes up in a few seconds. Without it, the TV's Wi-Fi sleeps and nothing on the network can reach it — only the button under the screen or a plugged-in HDMI box (Apple TV, console, Roku) can wake it.")
+                        .font(.footnote).foregroundStyle(Theme.muted)
+                }
                 Section("How pairing works") {
                     Text("The first time you press a key, the TV shows “remotebontrol wants to connect”. Pick Allow with any remote that still works, or the TV's own button. After that it remembers this phone. If you ever see “denied”, use Re-pair and watch the TV.")
                         .font(.footnote).foregroundStyle(Theme.muted)

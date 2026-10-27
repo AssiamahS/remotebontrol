@@ -21,6 +21,7 @@ struct RootView: View {
     @EnvironmentObject var remote: SamsungRemote
     @State private var page: Int = RootView.initialPage()
     @State private var showSettings = false
+    @Environment(\.scenePhase) private var scenePhase
 
     static func initialPage() -> Int {
         let args = CommandLine.arguments
@@ -49,6 +50,7 @@ struct RootView: View {
         .sheet(isPresented: $showSettings) { SettingsView() }
         .onAppear { remote.use(store.selected) }
         .onChange(of: store.selectedID) { _, _ in remote.use(store.selected) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { remote.reconnect() } }
         .onAppear { if store.tvs.isEmpty && !Persistence.isDemo { showSettings = true } }
     }
 
@@ -63,6 +65,8 @@ struct RootView: View {
                 Text("Remote control").font(.title3.weight(.bold))
                 Text(subtitle).font(.footnote).foregroundStyle(statusColor).lineLimit(1)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { remote.reconnect() }
             Spacer()
             Button { remote.power() } label: {
                 Image(systemName: "power").font(.title2.weight(.bold)).foregroundStyle(.white)
@@ -78,7 +82,9 @@ struct RootView: View {
         switch remote.state {
         case .waitingForAllow: return "Press Allow on the TV"
         case .denied: return "\(tv.displayName) · denied, tap to retry"
-        case .unreachable: return "\(tv.displayName) · off or unreachable"
+        case .unreachable: return "\(tv.displayName) · off · tap power to wake"
+        case .waking: return "\(tv.displayName) · waking…"
+        case .wakeFailed: return "\(tv.displayName) · didn't wake · see Settings"
         case .connecting, .idle: return "\(tv.displayName) · connecting"
         case .connected: return tv.displayName
         }
@@ -87,8 +93,8 @@ struct RootView: View {
     private var statusColor: Color {
         switch remote.state {
         case .connected: return Theme.muted
-        case .waitingForAllow: return Theme.accent
-        case .denied, .unreachable: return Theme.power
+        case .waitingForAllow, .waking: return Theme.accent
+        case .denied, .unreachable, .wakeFailed: return Theme.power
         default: return Theme.muted
         }
     }
